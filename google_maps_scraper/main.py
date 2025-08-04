@@ -4,7 +4,12 @@ Main entry point for the Optimized Google Maps Scraper
 """
 
 import logging
+import os
+from dotenv import load_dotenv
 from server import ProductionServer
+
+# Load environment variables
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(
