@@ -1,0 +1,837 @@
+{
+  "name": "Async Scraping Job Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "seconds",
+              "secondsInterval": 15
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1200,
+        200
+      ],
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "Job Polling Timer"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Configuration for this admin node\nconst ADMIN_CONFIG = {\n  admin_id: parseInt($vars.ADMIN_ID || '1'),\n  supported_keywords: ($vars.SUPPORTED_KEYWORDS || 'car rental,restaurant,hotel,pharmacy').split(',').map(k => k.trim()),\n  max_concurrent_jobs: parseInt($vars.MAX_CONCURRENT_JOBS || '3'),\n  scraper_endpoint: $vars.SCRAPER_ENDPOINT || 'http://localhost:5000',\n  completion_webhook: $vars.COMPLETION_WEBHOOK || 'https://your-n8n.com/webhook/job-completion'\n};\n\nconsole.log('Admin Configuration:', ADMIN_CONFIG);\n\nreturn {\n  ...ADMIN_CONFIG,\n  timestamp: new Date().toISOString(),\n  workflow_instance: 'async_scraping_automation'\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -960,
+        200
+      ],
+      "id": "b2c3d4e5-f6g7-8901-bcde-f23456789012",
+      "name": "Admin Configuration"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://rchtpjzauzntftiqttqo.supabase.co/rest/v1/rpc/claim_scrape_job",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"p_admin_id\": {{ $json.admin_id }},\n  \"p_keywords\": {{ JSON.stringify($json.supported_keywords) }},\n  \"p_max_jobs\": {{ $json.max_concurrent_jobs }}\n}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -720,
+        200
+      ],
+      "id": "c3d4e5f6-g7h8-9012-cdef-345678901234",
+      "name": "Claim Available Job",
+      "credentials": {
+        "supabaseApi": {
+          "id": "dEK34JReVbRZ4xgh",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "has-job",
+              "leftValue": "={{ $json.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        200
+      ],
+      "id": "d4e5f6g7-h8i9-0123-defg-456789012345",
+      "name": "Job Available?"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process the claimed job data and prepare async scrape request\nconst jobData = $input.first().json[0];\n\nif (!jobData) {\n  throw new Error('No job data received');\n}\n\nconsole.log('✅ Processing claimed job:', jobData.id);\n\n// Prepare the async scrape request\nconst scrapeRequest = {\n  job_id: jobData.id,\n  area_id: jobData.area_id,\n  area_name: jobData.area_name,\n  city_name: jobData.city_name,\n  country_name: jobData.country_name,\n  keyword: jobData.keyword,\n  admin_id: jobData.assigned_to,\n  search_term: jobData.keyword,\n  area_full_name: `${jobData.area_name}, ${jobData.city_name}, ${jobData.country_name}`,\n  // Add callback webhook URL for async completion\n  completion_webhook: $('Admin Configuration').first().json.completion_webhook,\n  max_results: 50,\n  async_mode: true  // Tell server to work asynchronously\n};\n\nconsole.log('🚀 Prepared async scrape request for job:', jobData.id);\n\nreturn scrapeRequest;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        120
+      ],
+      "id": "e5f6g7h8-i9j0-1234-efgh-567890123456",
+      "name": "Prepare Async Scrape Request"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Admin Configuration').item.json.scraper_endpoint }}/scrape-job-async",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"job_id\": {{ $json.job_id }},\n  \"search_term\": \"{{ $json.search_term }}\",\n  \"area_name\": \"{{ $json.area_full_name }}\",\n  \"area_id\": {{ $json.area_id }},\n  \"admin_id\": {{ $json.admin_id }},\n  \"keyword\": \"{{ $json.keyword }}\",\n  \"completion_webhook\": \"{{ $json.completion_webhook }}\",\n  \"max_results\": {{ $json.max_results }},\n  \"async_mode\": true\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        120
+      ],
+      "id": "f6g7h8i9-j0k1-2345-fghi-678901234567",
+      "name": "Start Async Scrape Job",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "job-started",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        240,
+        120
+      ],
+      "id": "g7h8i9j0-k1l2-3456-ghij-789012345678",
+      "name": "Job Started Successfully?"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log successful job start and continue polling\nconst startResponse = $input.first().json;\nconst jobData = $('Prepare Async Scrape Request').first().json;\n\nconsole.log('✅ Job started successfully:', {\n  job_id: jobData.job_id,\n  area_name: jobData.area_name,\n  keyword: jobData.keyword,\n  message: startResponse.message || 'Job initiated'\n});\n\nreturn {\n  success: true,\n  message: `Job ${jobData.job_id} started for ${jobData.keyword} in ${jobData.area_name}`,\n  job_id: jobData.job_id,\n  admin_id: jobData.admin_id,\n  status: 'job_started',\n  timestamp: new Date().toISOString()\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        40
+      ],
+      "id": "h8i9j0k1-l2m3-4567-hijk-890123456789",
+      "name": "Log Job Started"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle job start failure\nconst errorData = $input.first();\nconst jobData = $('Prepare Async Scrape Request').first().json;\n\nlet errorMessage = 'Failed to start scrape job';\nif (errorData.json && errorData.json.error) {\n  errorMessage = errorData.json.error;\n} else if (errorData.error) {\n  errorMessage = errorData.error.message || errorData.error;\n}\n\nconsole.error('❌ Failed to start job:', {\n  job_id: jobData.job_id,\n  error: errorMessage\n});\n\nreturn {\n  job_id: jobData.job_id,\n  error_message: errorMessage,\n  failed_at: new Date().toISOString(),\n  status: 'start_failed'\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        200
+      ],
+      "id": "i9j0k1l2-m3n4-5678-ijkl-901234567890",
+      "name": "Handle Job Start Failure"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "scrape_jobs",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.job_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "failed"
+            },
+            {
+              "fieldId": "error_message",
+              "fieldValue": "={{ $json.error_message }}"
+            },
+            {
+              "fieldId": "completed_at",
+              "fieldValue": "={{ $json.failed_at }}"
+            },
+            {
+              "fieldId": "logs",
+              "fieldValue": "={{ JSON.stringify({\n                error: $json.error_message,\n                failed_at: $json.failed_at,\n                failure_reason: 'job_start_failed'\n              }) }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        720,
+        200
+      ],
+      "id": "j0k1l2m3-n4o5-6789-jklm-012345678901",
+      "name": "Mark Job Start Failed",
+      "credentials": {
+        "supabaseApi": {
+          "id": "dEK34JReVbRZ4xgh",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// No jobs available - this is normal\nconsole.log('ℹ️ No pending jobs available for admin', $('Admin Configuration').first().json.admin_id);\n\nreturn {\n  message: 'No pending jobs available',\n  admin_id: $('Admin Configuration').first().json.admin_id,\n  timestamp: new Date().toISOString(),\n  status: 'waiting_for_jobs'\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        280
+      ],
+      "id": "k1l2m3n4-o5p6-7890-klmn-123456789012",
+      "name": "Log No Jobs Available"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "job-completion",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1200,
+        500
+      ],
+      "id": "l2m3n4o5-p6q7-8901-lmno-234567890123",
+      "name": "Job Completion Webhook",
+      "webhookId": "job-completion-callback-456"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process job completion webhook from Python server\nconst webhookData = $json.body || $json;\n\nconsole.log('📨 Received job completion webhook:', webhookData);\n\n// Validate required fields\nif (!webhookData.job_id) {\n  throw new Error('Missing job_id in webhook data');\n}\n\nconst completionData = {\n  job_id: webhookData.job_id,\n  success: webhookData.success || false,\n  businesses_found: webhookData.businesses_found || 0,\n  processing_time: webhookData.processing_time || null,\n  error_message: webhookData.error_message || null,\n  completed_at: new Date().toISOString(),\n  area_name: webhookData.area_name || 'Unknown',\n  search_term: webhookData.search_term || 'Unknown'\n};\n\nif (completionData.success) {\n  console.log(`✅ Job ${completionData.job_id} completed successfully with ${completionData.businesses_found} businesses`);\n} else {\n  console.log(`❌ Job ${completionData.job_id} failed: ${completionData.error_message}`);\n}\n\nreturn completionData;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -960,
+        500
+      ],
+      "id": "m3n4o5p6-q7r8-9012-mnop-345678901234",
+      "name": "Process Job Completion"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "job-success",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        500
+      ],
+      "id": "n4o5p6q7-r8s9-0123-nopq-456789012345",
+      "name": "Job Completed Successfully?"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "scrape_jobs",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.job_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "completed"
+            },
+            {
+              "fieldId": "completed_at",
+              "fieldValue": "={{ $json.completed_at }}"
+            },
+            {
+              "fieldId": "businesses_found",
+              "fieldValue": "={{ $json.businesses_found }}"
+            },
+            {
+              "fieldId": "processing_time_seconds",
+              "fieldValue": "={{ $json.processing_time || 0 }}"
+            },
+            {
+              "fieldId": "logs",
+              "fieldValue": "={{ JSON.stringify({\n                businesses_found: $json.businesses_found,\n                completed_at: $json.completed_at,\n                area_name: $json.area_name,\n                search_term: $json.search_term,\n                completion_method: 'webhook_callback'\n              }) }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        420
+      ],
+      "id": "o5p6q7r8-s9t0-1234-opqr-567890123456",
+      "name": "Mark Job Completed",
+      "credentials": {
+        "supabaseApi": {
+          "id": "dEK34JReVbRZ4xgh",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "scrape_jobs",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.job_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "failed"
+            },
+            {
+              "fieldId": "completed_at",
+              "fieldValue": "={{ $json.completed_at }}"
+            },
+            {
+              "fieldId": "error_message",
+              "fieldValue": "={{ $json.error_message }}"
+            },
+            {
+              "fieldId": "logs",
+              "fieldValue": "={{ JSON.stringify({\n                error: $json.error_message,\n                completed_at: $json.completed_at,\n                area_name: $json.area_name,\n                search_term: $json.search_term,\n                completion_method: 'webhook_callback'\n              }) }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        580
+      ],
+      "id": "p6q7r8s9-t0u1-2345-pqrs-678901234567",
+      "name": "Mark Job Failed",
+      "credentials": {
+        "supabaseApi": {
+          "id": "dEK34JReVbRZ4xgh",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "areas",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Process Job Completion').item.json.area_id || 0 }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "last_scraped_at",
+              "fieldValue": "={{ $json.completed_at }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        420
+      ],
+      "id": "q7r8s9t0-u1v2-3456-qrst-789012345678",
+      "name": "Update Area Timestamp",
+      "credentials": {
+        "supabaseApi": {
+          "id": "dEK34JReVbRZ4xgh",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log successful job completion\nconst completionData = $input.first().json;\n\nconsole.log('🎉 Job completion logged successfully:', {\n  job_id: completionData.id,\n  businesses_found: completionData.businesses_found,\n  status: completionData.status\n});\n\nreturn {\n  success: true,\n  message: `Job ${completionData.id} completed and logged`,\n  job_id: completionData.id,\n  businesses_found: completionData.businesses_found,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        420
+      ],
+      "id": "r8s9t0u1-v2w3-4567-rstu-890123456789",
+      "name": "Log Completion Success"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log job failure\nconst failureData = $input.first().json;\n\nconsole.log('💥 Job failure logged:', {\n  job_id: failureData.id,\n  error_message: failureData.error_message\n});\n\nreturn {\n  success: false,\n  message: `Job ${failureData.id} failed and logged`,\n  job_id: failureData.id,\n  error: failureData.error_message,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        580
+      ],
+      "id": "s9t0u1v2-w3x4-5678-stuv-901234567890",
+      "name": "Log Failure"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        240,
+        500
+      ],
+      "id": "t0u1v2w3-x4y5-6789-tuvw-012345678901",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "test-async-scraping",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1200,
+        800
+      ],
+      "id": "u1v2w3x4-y5z6-7890-uvwx-123456789012",
+      "name": "Test Async Workflow",
+      "webhookId": "test-async-workflow-123"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Create test scrape job for async validation\nconst testData = $json.body || {};\n\nconst testJob = {\n  area_id: testData.area_id || 1,\n  keyword: testData.keyword || 'restaurant',\n  status: 'pending',\n  created_at: new Date().toISOString(),\n  logs: JSON.stringify({\n    created_by: 'test_async_webhook',\n    test_purpose: 'async_workflow_validation'\n  })\n};\n\nconsole.log('Creating test async job:', testJob);\n\nreturn testJob;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -960,
+        800
+      ],
+      "id": "v2w3x4y5-z6a7-8901-vwxy-234567890123",
+      "name": "Create Test Async Job"
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "tableId": "scrape_jobs",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "area_id",
+              "fieldValue": "={{ $json.area_id }}"
+            },
+            {
+              "fieldId": "keyword",
+              "fieldValue": "={{ $json.keyword }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $json.status }}"
+            },
+            {
+              "fieldId": "logs",
+              "fieldValue": "={{ $json.logs }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -720,
+        800
+      ],
+      "id": "w3x4y5z6-a7b8-9012-wxyz-345678901234",
+      "name": "Insert Test Async Job",
+      "credentials": {
+        "supabaseApi": {
+          "id": "dEK34JReVbRZ4xgh",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -480,
+        800
+      ],
+      "id": "x4y5z6a7-b8c9-0123-xyza-456789012345",
+      "name": "Test Async Response"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Job Polling Timer": {
+      "main": [
+        [
+          {
+            "node": "Admin Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Admin Configuration": {
+      "main": [
+        [
+          {
+            "node": "Claim Available Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claim Available Job": {
+      "main": [
+        [
+          {
+            "node": "Job Available?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job Available?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Async Scrape Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log No Jobs Available",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Async Scrape Request": {
+      "main": [
+        [
+          {
+            "node": "Start Async Scrape Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start Async Scrape Job": {
+      "main": [
+        [
+          {
+            "node": "Job Started Successfully?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Job Start Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job Started Successfully?": {
+      "main": [
+        [
+          {
+            "node": "Log Job Started",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Job Start Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Job Start Failure": {
+      "main": [
+        [
+          {
+            "node": "Mark Job Start Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job Completion Webhook": {
+      "main": [
+        [
+          {
+            "node": "Process Job Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Job Completion": {
+      "main": [
+        [
+          {
+            "node": "Job Completed Successfully?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job Completed Successfully?": {
+      "main": [
+        [
+          {
+            "node": "Mark Job Completed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Job Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Job Completed": {
+      "main": [
+        [
+          {
+            "node": "Update Area Timestamp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Job Failed": {
+      "main": [
+        [
+          {
+            "node": "Log Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Area Timestamp": {
+      "main": [
+        [
+          {
+            "node": "Log Completion Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Completion Success": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Failure": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test Async Workflow": {
+      "main": [
+        [
+          {
+            "node": "Create Test Async Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Test Async Job": {
+      "main": [
+        [
+          {
+            "node": "Insert Test Async Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Test Async Job": {
+      "main": [
+        [
+          {
+            "node": "Test Async Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "async-scraping-automation-v1",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "async_scraping_job_automation_001"
+  },
+  "id": "async-scraping-job-automation",
+  "tags": [
+    "scraping",
+    "automation",
+    "distributed",
+    "async",
+    "lead-generation"
+  ]
+}
