@@ -8,6 +8,7 @@ import time
 import logging
 import threading
 import requests
+import concurrent.futures
 from datetime import datetime
 from typing import Dict, Any
 from flask import Flask, request, jsonify
@@ -267,10 +268,10 @@ class ProductionServer:
                 'bypass_cache': True  # Always use fresh data for jobs
             }
             
-            # Process the scraping
+            # Process the scraping - no timeout to ensure completion
             result = self.event_loop_manager.run_async(
                 self._process_single_async(scrape_request),
-                timeout=300.0
+                timeout=None  # No timeout - let it complete naturally
             )
             
             # Calculate processing time
@@ -300,16 +301,25 @@ class ProductionServer:
                 "timestamp": datetime.now().isoformat()
             }
             
+            # Update job status based on result
+            if result.get('success'):
+                self._update_job_status(job_id, 'completed')
+            else:
+                self._update_job_status(job_id, 'failed', result.get('error', 'Processing failed'))
+            
             # Send completion webhook
             self._send_completion_webhook(completion_webhook, completion_data, job_id)
             
         except Exception as e:
-            logger.error(f"Async job {job_id} failed: {e}")
+            error_msg = str(e) if str(e) else "Unknown error occurred"
+            logger.error(f"Async job {job_id} failed: {error_msg}")
+            # Update job status
+            self._update_job_status(job_id, 'failed', error_msg)
             # Send failure webhook
             self._send_completion_webhook(completion_webhook, {
                 "job_id": job_id,
                 "success": False,
-                "error_message": str(e),
+                "error_message": error_msg,
                 "processing_time": int(time.time() - start_time),
                 "timestamp": datetime.now().isoformat()
             }, job_id)

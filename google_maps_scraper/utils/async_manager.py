@@ -52,4 +52,7 @@ class AsyncEventLoopManager:
         """Run async function safely"""
         loop = self.get_loop()
         future = asyncio.run_coroutine_threadsafe(coro, loop)
-        return future.result(timeout=timeout) 
+        if timeout is None:
+            return future.result()  # No timeout - wait indefinitely
+        else:
+            return future.result(timeout=timeout) 
