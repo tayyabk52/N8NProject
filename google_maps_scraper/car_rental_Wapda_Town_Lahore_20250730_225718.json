@@ -1,0 +1,94 @@
+{
+  "success": true,
+  "businesses": [
+    {
+      "name": "Wapda Town Rent A Car",
+      "category": "Car rental agency",
+      "rating": 4.9,
+      "review_count": 130,
+      "address": "50 A Street No. 1, Block F1 Block F 1 Wapda Town Phase 1 Lahore, 52140, Pakistan",
+      "website": "https://rentacarwapdatown.online",
+      "phone": "+92 326 8045703",
+      "raw_info_elements": [
+        "50 A Street No. 1, Block F1 Block F 1 Wapda Town Phase 1 Lahore, 52140, Pakistan",
+        "rentacarwapdatown.online",
+        "+92 326 8045703",
+        "C7J8+83 Lahore, Pakistan"
+      ],
+      "latitude": 31.4307768,
+      "longitude": 74.2651351
+    },
+    {
+      "name": "Tan Tours & Car Rental - Lahore | Luxury Cars & Drivers",
+      "category": "Car rental agency",
+      "rating": 4.9,
+      "review_count": 76,
+      "address": "Al Wahab Trade Center, 240-D PIA Main Boulevard، Roundabout, WAPDA Town Lahore, 54770, Pakistan",
+      "website": "https://tancarrental.com",
+      "phone": "+92 300 8887578",
+      "raw_info_elements": [
+        "Al Wahab Trade Center, 240-D PIA Main Boulevard، Roundabout, WAPDA Town Lahore, 54770, Pakistan",
+        "tancarrental.com",
+        "tancarrental.com",
+        "+92 300 8887578",
+        "C7RG+WM Lahore, Pakistan"
+      ],
+      "latitude": 31.4423287,
+      "longitude": 74.2766631
+    },
+    {
+      "name": "Malik maaz Car Rental Services",
+      "category": "Car rental agency",
+      "rating": 5.0,
+      "review_count": 29,
+      "address": "WAPDA Town Block G 1 Wapda Town Phase 1 Lahore, 54000, Pakistan",
+      "website": "https://sites.google.com",
+      "phone": "+92 314 2055883",
+      "raw_info_elements": [
+        "WAPDA Town Block G 1 Wapda Town Phase 1 Lahore, 54000, Pakistan",
+        "sites.google.com",
+        "+92 314 2055883",
+        "C7J7+FP Lahore, Pakistan"
+      ],
+      "latitude": 31.4311985,
+      "longitude": 74.2643582
+    },
+    {
+      "name": "Azan Rent A Car Wapda Town",
+      "category": "Car rental agency",
+      "address": "Near 52 Street No. 1, WAPDA Town Block F 1 Wapda Town Phase 1 Lahore, 52140, Pakistan",
+      "website": "https://wa.me",
+      "phone": "+92 326 4605374",
+      "raw_info_elements": [
+        "Near 52 Street No. 1, WAPDA Town Block F 1 Wapda Town Phase 1 Lahore, 52140, Pakistan",
+        "wa.me",
+        "+92 326 4605374",
+        "C7J8+54 Lahore, Pakistan"
+      ],
+      "latitude": 31.4304932,
+      "longitude": 74.2652523
+    },
+    {
+      "name": "IFTIKHAR RENT A CAR TRAVEL SERVICE",
+      "category": "Car rental agency",
+      "rating": 5.0,
+      "review_count": 38,
+      "address": "242 G5, 1 Phase, WAPDA Town Lahore, 54770, Pakistan",
+      "phone": "+92 321 4041414",
+      "raw_info_elements": [
+        "242 G5, 1 Phase, WAPDA Town Lahore, 54770, Pakistan",
+        "+92 321 4041414",
+        "C7J3+4V Lahore, Pakistan"
+      ],
+      "latitude": 31.4303247,
+      "longitude": 74.2546749
+    }
+  ],
+  "total_found": 5,
+  "cards_loaded": 8,
+  "search_term": "car rental",
+  "area_name": "Wapda Town Lahore",
+  "extraction_method": "Two-Phase (Scroll + Sequential Detail Extraction)",
+  "retry_count": 0,
+  "fresh_browser": true
+}
