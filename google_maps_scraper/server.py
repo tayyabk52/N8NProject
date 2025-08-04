@@ -268,10 +268,10 @@ class ProductionServer:
                 'bypass_cache': True  # Always use fresh data for jobs
             }
             
-            # Process the scraping
+            # Process the scraping - no timeout to ensure completion
             result = self.event_loop_manager.run_async(
                 self._process_single_async(scrape_request),
-                timeout=600.0  # Increased to 10 minutes for larger jobs
+                timeout=None  # No timeout - let it complete naturally
             )
             
             # Calculate processing time
@@ -310,19 +310,6 @@ class ProductionServer:
             # Send completion webhook
             self._send_completion_webhook(completion_webhook, completion_data, job_id)
             
-        except concurrent.futures.TimeoutError:
-            error_msg = f"Job timed out after {int(time.time() - start_time)} seconds"
-            logger.error(f"Async job {job_id} failed: {error_msg}")
-            # Update job status
-            self._update_job_status(job_id, 'failed', error_msg)
-            # Send failure webhook
-            self._send_completion_webhook(completion_webhook, {
-                "job_id": job_id,
-                "success": False,
-                "error_message": error_msg,
-                "processing_time": int(time.time() - start_time),
-                "timestamp": datetime.now().isoformat()
-            }, job_id)
         except Exception as e:
             error_msg = str(e) if str(e) else "Unknown error occurred"
             logger.error(f"Async job {job_id} failed: {error_msg}")
